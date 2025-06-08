@@ -34,32 +34,69 @@ def analyze_screenshots(screenshots):
         DETAILS: [Brief description of any issues found, or "No serious styling issues found"]
         """
         
-        # Prepare messages for the API
-        messages = [
-            {"role": "system", "content": prompt}
-        ]
+        individual_analyses = []
         
-        # Add screenshots to the messages
-        if screenshots:  # Check if we have any screenshots
-            screenshot = screenshots[0]  # Take only the first screenshot
-            print(f'INFO: screenshot --> {screenshot}')
+        # Analyze each screenshot
+        for i, screenshot in enumerate(screenshots, 1):
+            print(f"\nAnalyzing screenshot {i} of {len(screenshots)}...")
+            
+            # Prepare messages for the API
+            messages = [
+                {"role": "system", "content": prompt}
+            ]
+            
+            # Add screenshot to the messages
+            print(f'INFO: Processing screenshot {i} --> {screenshot}')
             with open(screenshot, 'rb') as img_file:
                 base64_image = base64.b64encode(img_file.read()).decode('utf-8')
-                messages.append({
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "Analyze this screenshot:"},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/png;base64,{base64_image}"
-                            }
+                
+            messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": f"Analyze screenshot {i}:"},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{base64_image}"
                         }
-                    ]
-                })
+                    }
+                ]
+            })
+            
+            # Make the API call for this screenshot
+            response = client.chat.completions.create(
+                model="google/gemma-3-27b-it",
+                max_tokens=512,
+                temperature=0.5,
+                top_p=0.9,
+                extra_body={
+                    "top_k": 50
+                },
+                messages=messages
+            )
+            
+            analysis = response.choices[0].message.content
+            individual_analyses.append(f"Screenshot {i} Analysis:\n{analysis}\n")
         
-        # Make the API call
-        response = client.chat.completions.create(
+        # Generate summary of all analyses
+        summary_prompt = f"""Please provide a summary of the following screenshot analyses. 
+        Focus on identifying any patterns or common issues across the screenshots.
+        
+        Here are the individual analyses:
+        {'\n'.join(individual_analyses)}
+        
+        Format your response as:
+        SUMMARY: [Brief summary of findings across all screenshots]
+        COMMON_ISSUES: [List any issues that appear in multiple screenshots]
+        OVERALL_ASSESSMENT: [Overall assessment of the website's styling]
+        """
+        
+        summary_messages = [
+            {"role": "system", "content": "You are a web design analysis assistant that provides clear summaries of styling issues."},
+            {"role": "user", "content": summary_prompt}
+        ]
+        
+        summary_response = client.chat.completions.create(
             model="google/gemma-3-27b-it",
             max_tokens=512,
             temperature=0.5,
@@ -67,11 +104,14 @@ def analyze_screenshots(screenshots):
             extra_body={
                 "top_k": 50
             },
-            messages=messages
+            messages=summary_messages
         )
         
+        # Combine individual analyses and summary
+        final_response = "\n".join(individual_analyses) + "\n\nSUMMARY:\n" + summary_response.choices[0].message.content
+        
         print("Analysis complete!")
-        return response.choices[0].message.content
+        return final_response
         
     except Exception as e:
         print(f"Error analyzing screenshots: {str(e)}")

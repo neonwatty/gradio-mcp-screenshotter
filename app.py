@@ -193,63 +193,112 @@ def process_url(url, return_base64=False):
 def analyze_screenshots_handler(desktop_screenshots, mobile_screenshots):
     """Handler for analyzing screenshots with LLM."""
     print("\nStarting LLM analysis of screenshots...")
+    
+    # Check if there are any screenshots
+    if not desktop_screenshots and not mobile_screenshots:
+        return "⚠️ No screenshots available for analysis. Please generate screenshots first."
+    
     all_screenshots = [s[0] for s in desktop_screenshots + mobile_screenshots]
     analysis_results = analyze_screenshots(all_screenshots)
     return analysis_results
 
 # Create Gradio interface
-with gr.Blocks(title="Website Screenshot Tool") as demo:
-    gr.Markdown("# Website Screenshot Tool")
-    gr.Markdown("Enter a web address to get screenshots of all its pages and subdomains in both desktop and mobile views.")
-    gr.Markdown("Note: Only one user can process screenshots at a time. Please wait if the queue is busy.")
-    
-    with gr.Row():
-        url_input = gr.Textbox(label="Web Address", placeholder="Enter a web address (e.g., example.com)")
-        submit_btn = gr.Button("Generate Screenshots")
-    
-    with gr.Row():
-        with gr.Column():
-            gr.Markdown("## Desktop Screenshots")
-            desktop_gallery = gr.Gallery(
-                label="Desktop View",
-                show_label=True,
-                elem_id="desktop_gallery",
-                columns=[2],
-                rows=[2],
-                height="auto"
+with gr.Blocks(title="Website Screenshot Tool", theme=gr.themes.Soft()) as demo:
+    with gr.Column(scale=1, min_width=800):
+        gr.Markdown("""
+# 🌐 Website Screenshot Tool
+### Capture and analyze your website's appearance across different devices
+""", elem_classes=["header"])
+        
+        gr.Markdown("Note: Only one user can process screenshots at a time. Please wait if the queue is busy.")
+        
+        # Top Row - Screenshotting
+        with gr.Row():
+            # URL Input Section
+            url_input = gr.Textbox(
+                label="Web Address",
+                placeholder="Enter a web address (e.g., example.com)",
+                info="Make sure to include http:// or https://",
+                elem_classes=["input-field"]
+            )
+            submit_btn = gr.Button(
+                "Generate Screenshots",
+                variant="primary",
+                elem_classes=["action-button"]
             )
         
-        with gr.Column():
-            gr.Markdown("## Mobile Screenshots")
-            mobile_gallery = gr.Gallery(
-                label="Mobile View",
-                show_label=True,
-                elem_id="mobile_gallery",
-                columns=[2],
-                rows=[2],
-                height="auto"
-            )
-    
-    with gr.Row():
-        analyze_btn = gr.Button("Analyze Screenshots with LLM", variant="primary")
-    
-    with gr.Row():
-        gr.Markdown("## LLM Analysis Results")
-        analysis_output = gr.Textbox(
-            label="Analysis Results",
-            show_label=True,
-            lines=5,
-            max_lines=10,
-            interactive=False
-        )
+        with gr.Row():
+            # Desktop Screenshots Section
+            with gr.Column():
+                gr.Markdown("## Desktop Screenshots")
+                desktop_gallery = gr.Gallery(
+                    label="Desktop View",
+                    show_label=True,
+                    elem_id="desktop_gallery",
+                    columns=[3],  # More flexible layout
+                    rows=[3],
+                    height="auto",
+                    object_fit="contain",
+                    elem_classes=["gallery"]
+                )
+            
+            # Mobile Screenshots Section
+            with gr.Column():
+                gr.Markdown("## Mobile Screenshots")
+                mobile_gallery = gr.Gallery(
+                    label="Mobile View",
+                    show_label=True,
+                    elem_id="mobile_gallery",
+                    columns=[3],  # More flexible layout
+                    rows=[3],
+                    height="auto",
+                    object_fit="contain",
+                    elem_classes=["gallery"]
+                )
+        
+        # Bottom Row - Analysis
+        with gr.Row():
+            with gr.Group(elem_classes=["analysis-container"]):
+                gr.Markdown("---")  # Horizontal line separator
+                gr.Markdown("## LLM Analysis Results")
+                gr.Markdown("")  # Add empty line for spacing
+                gr.Markdown("")  # Add another empty line for more spacing
+                analyze_btn = gr.Button(
+                    "Analyze Screenshots with LLM",
+                    variant="primary",
+                    elem_classes=["action-button"],
+                    scale=1,
+                    min_width=200
+                )
+                analysis_output = gr.Markdown(
+                    label="Analysis Results",
+                    show_label=True,
+                    elem_classes=["analysis-results"],
+                    value=" "  # Add a space to ensure minimum height
+                )
     
     # UI handlers
     def ui_handler(url):
-        return process_url(url, return_base64=False)
+        if not url:
+            raise gr.Error("Please enter a valid URL")
+        if not url.startswith(('http://', 'https://')):
+            url = 'https://' + url
+            print(f"Added https:// prefix to URL")
+        try:
+            return process_url(url, return_base64=False)
+        except Exception as e:
+            raise gr.Error(f"Error processing URL: {str(e)}")
     
     # API handler
     def api_handler(url):
-        return process_url(url, return_base64=True)
+        if not url:
+            raise gr.Error("Please enter a valid URL")
+        if not url.startswith(('http://', 'https://')):
+            url = 'https://' + url
+        try:
+            return process_url(url, return_base64=True)
+        except Exception as e:
+            raise gr.Error(f"Error processing URL: {str(e)}")
     
     # Register handlers
     submit_btn.click(
@@ -257,7 +306,8 @@ with gr.Blocks(title="Website Screenshot Tool") as demo:
         inputs=url_input,
         outputs=[desktop_gallery, mobile_gallery],
         queue=True,
-        concurrency_limit=1
+        concurrency_limit=1,
+        show_progress=True
     )
     
     analyze_btn.click(
@@ -265,7 +315,8 @@ with gr.Blocks(title="Website Screenshot Tool") as demo:
         inputs=[desktop_gallery, mobile_gallery],
         outputs=analysis_output,
         queue=True,
-        concurrency_limit=1
+        concurrency_limit=1,
+        show_progress=True
     )
     
     # Expose API endpoint
