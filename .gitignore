@@ -4,6 +4,9 @@ __pycache__/
 *$py.class
 *.env
 *.DS_Store
+scratch.ipynb
+screenshots/
+.gradio/
 
 # C extensions
 *.so

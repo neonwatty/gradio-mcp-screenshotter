@@ -190,6 +190,13 @@ def process_url(url, return_base64=False):
     print(f"{'='*50}\n")
     return desktop_screenshots, mobile_screenshots
 
+def analyze_screenshots_handler(desktop_screenshots, mobile_screenshots):
+    """Handler for analyzing screenshots with LLM."""
+    print("\nStarting LLM analysis of screenshots...")
+    all_screenshots = [s[0] for s in desktop_screenshots + mobile_screenshots]
+    analysis_results = analyze_screenshots(all_screenshots)
+    return analysis_results
+
 # Create Gradio interface
 with gr.Blocks(title="Website Screenshot Tool") as demo:
     gr.Markdown("# Website Screenshot Tool")
@@ -223,7 +230,20 @@ with gr.Blocks(title="Website Screenshot Tool") as demo:
                 height="auto"
             )
     
-    # UI handler
+    with gr.Row():
+        analyze_btn = gr.Button("Analyze Screenshots with LLM", variant="primary")
+    
+    with gr.Row():
+        gr.Markdown("## LLM Analysis Results")
+        analysis_output = gr.Textbox(
+            label="Analysis Results",
+            show_label=True,
+            lines=5,
+            max_lines=10,
+            interactive=False
+        )
+    
+    # UI handlers
     def ui_handler(url):
         return process_url(url, return_base64=False)
     
@@ -231,11 +251,19 @@ with gr.Blocks(title="Website Screenshot Tool") as demo:
     def api_handler(url):
         return process_url(url, return_base64=True)
     
-    # Register both handlers
+    # Register handlers
     submit_btn.click(
         fn=ui_handler,
         inputs=url_input,
         outputs=[desktop_gallery, mobile_gallery],
+        queue=True,
+        concurrency_limit=1
+    )
+    
+    analyze_btn.click(
+        fn=analyze_screenshots_handler,
+        inputs=[desktop_gallery, mobile_gallery],
+        outputs=analysis_output,
         queue=True,
         concurrency_limit=1
     )

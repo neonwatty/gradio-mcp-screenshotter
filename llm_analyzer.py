@@ -36,25 +36,27 @@ def analyze_screenshots(screenshots):
         
         # Prepare messages for the API
         messages = [
-            {"role": "system", "content": "You are a web design analysis assistant that identifies serious styling issues."},
-            {"role": "user", "content": prompt}
+            {"role": "system", "content": prompt}
         ]
         
         # Add screenshots to the messages
-        for screenshot in screenshots:
-            if isinstance(screenshot, str):  # If it's a file path
-                with open(screenshot, 'rb') as img_file:
-                    base64_image = base64.b64encode(img_file.read()).decode('utf-8')
-            else:  # If it's already base64
-                base64_image = screenshot
-                
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "Analyze this screenshot:"},
-                    {"type": "image_url", "image_url": f"data:image/png;base64,{base64_image}"}
-                ]
-            })
+        if screenshots:  # Check if we have any screenshots
+            screenshot = screenshots[0]  # Take only the first screenshot
+            print(f'INFO: screenshot --> {screenshot}')
+            with open(screenshot, 'rb') as img_file:
+                base64_image = base64.b64encode(img_file.read()).decode('utf-8')
+                messages.append({
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Analyze this screenshot:"},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{base64_image}"
+                            }
+                        }
+                    ]
+                })
         
         # Make the API call
         response = client.chat.completions.create(
@@ -74,3 +76,4 @@ def analyze_screenshots(screenshots):
     except Exception as e:
         print(f"Error analyzing screenshots: {str(e)}")
         return "Error: Could not analyze screenshots" 
+        
