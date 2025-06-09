@@ -7,6 +7,11 @@ __pycache__/
 scratch.ipynb
 screenshots/
 .gradio/
+*.json
+*.zip
+*.chromedriver
+chromedriver
+
 
 # C extensions
 *.so

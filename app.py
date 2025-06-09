@@ -61,7 +61,13 @@ def setup_driver(viewport_type='desktop'):
         }
         chrome_options.add_experimental_option("mobileEmulation", mobile_emulation)
     
+    # Configure WebDriver Manager environment variables
+    os.environ['WDM_LOCAL'] = '1'
+    os.environ['WDM_SSL_VERIFY'] = '0'
+    os.environ['WDM_PATH'] = '/tmp/.wdm'
+    
     service = Service(ChromeDriverManager().install())
+
     driver = webdriver.Chrome(service=service, options=chrome_options)
     print(f"Chrome WebDriver setup complete for {viewport_type} view!")
     return driver
