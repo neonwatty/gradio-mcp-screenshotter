@@ -38,6 +38,7 @@ class AnalysisSummary(BaseModel):
     summary: str = Field(..., description="Brief summary of findings across all screenshots")
     common_issues: List[str] = Field(default_factory=list, description="List of issues that appear in multiple screenshots")
     overall_assessment: str = Field(..., description="Overall assessment of the website's styling")
+    all_passed: bool = Field(..., description="True if all screenshots passed, False if any failed")
 
 def parse_llm_response(text: str) -> LLMResponse:
     """Parse the LLM response text into a structured format."""
@@ -55,7 +56,7 @@ def parse_llm_response(text: str) -> LLMResponse:
         print(f"Error parsing LLM response: {str(e)}")
         return LLMResponse(issues_found=False, details="Error parsing response")
 
-def parse_summary_response(text: str) -> AnalysisSummary:
+def parse_summary_response(text: str, all_passed: bool) -> AnalysisSummary:
     """Parse the summary response text into a structured format."""
     try:
         lines = text.split('\n')
@@ -70,14 +71,16 @@ def parse_summary_response(text: str) -> AnalysisSummary:
         return AnalysisSummary(
             summary=summary,
             common_issues=common_issues,
-            overall_assessment=overall_assessment
+            overall_assessment=overall_assessment,
+            all_passed=all_passed
         )
     except Exception as e:
         print(f"Error parsing summary response: {str(e)}")
         return AnalysisSummary(
             summary="Error parsing summary",
             common_issues=[],
-            overall_assessment="Error parsing assessment"
+            overall_assessment="Error parsing assessment",
+            all_passed=all_passed
         )
 
 def analyze_screenshots(screenshots: List[str]) -> str:
@@ -103,6 +106,7 @@ def analyze_screenshots(screenshots: List[str]) -> str:
         """
         
         individual_analyses = []
+        issues_found_list = []
         
         # Analyze each screenshot
         for i, screenshot in enumerate(screenshots, 1):
@@ -145,6 +149,7 @@ def analyze_screenshots(screenshots: List[str]) -> str:
             # Parse the response
             analysis = parse_llm_response(response.choices[0].message.content)
             individual_analyses.append(f"Screenshot {i} Analysis:\n{analysis.model_dump_json(indent=2)}\n")
+            issues_found_list.append(analysis.issues_found)
         
         # Generate summary of all analyses
         summary_prompt = f"""Please provide a summary of the following screenshot analyses. 
@@ -176,7 +181,8 @@ def analyze_screenshots(screenshots: List[str]) -> str:
         )
         
         # Parse the summary response
-        summary = parse_summary_response(summary_response.choices[0].message.content)
+        all_passed = all(issues_found_list)
+        summary = parse_summary_response(summary_response.choices[0].message.content, all_passed)
         
         # Combine individual analyses and summary
         final_response = "\n".join(individual_analyses) + "\n\nSUMMARY:\n" + summary.model_dump_json(indent=2)

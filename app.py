@@ -297,56 +297,53 @@ def analyze_screenshots_handler(desktop_screenshots, mobile_screenshots):
         
         <style>
             .analysis-container {
-                background: #181a20;
-                border-radius: 12px;
-                padding: 24px;
-                margin: 24px 0;
-                box-shadow: 0 2px 8px rgba(108, 99, 255, 0.10);
+                background: #f5f6fa;
+                color: #222;
             }
-            .summary-card {
-                background: #23272f;
-                border-radius: 10px;
-                padding: 20px;
-                margin-bottom: 24px;
-                box-shadow: 0 1px 4px rgba(108, 99, 255, 0.12);
+            .summary-card, .analysis-card, .summary-item {
+                background: #fff;
+                color: #222;
                 border-left: 4px solid #6c63ff;
+            }
+            .issue-tag {
+                background: #e6e4ff;
+                color: #6c63ff;
+            }
+            /* ...other light mode styles... */
+            @media (prefers-color-scheme: dark) {
+                .analysis-container {
+                    background: #181a20;
+                    color: #f5f6fa;
+                }
+                .summary-card, .analysis-card, .summary-item {
+                    background: #23272f;
+                    color: #f5f6fa;
+                    border-left: 4px solid #6c63ff;
+                }
+                .issue-tag {
+                    background: #2d254d;
+                    color: #a99cff;
+                }
+                /* ...other dark mode styles... */
             }
             .summary-content {
                 display: grid;
                 gap: 20px;
-            }
-            .summary-item, .analysis-card {
-                background: #24262b;
-                padding: 15px;
-                border-radius: 8px;
-                box-shadow: 0 1px 3px rgba(108, 99, 255, 0.10);
-            }
-            .summary-item h4, .analysis-header h4 {
-                color: #a99cff;
             }
             .issue-tags {
                 display: flex;
                 flex-wrap: wrap;
                 gap: 8px;
             }
-            .issue-tag {
-                background: #2d254d;
-                color: #a99cff;
-                border-radius: 16px;
-                padding: 4px 14px;
-                font-weight: 500;
-            }
             .screenshot-analyses {
                 display: grid;
                 gap: 15px;
             }
             .analysis-card {
-                background: #24262b;
                 border-radius: 10px;
                 padding: 16px;
                 box-shadow: 0 1px 4px rgba(108, 99, 255, 0.08);
                 margin-bottom: 16px;
-                border-left: 4px solid #6c63ff;
             }
             .analysis-header {
                 display: flex;
@@ -356,14 +353,14 @@ def analyze_screenshots_handler(desktop_screenshots, mobile_screenshots):
             }
             .analysis-header h4 {
                 margin: 0;
-                color: #a99cff;
+                color: #6c63ff;
             }
             .status-indicator {
                 font-size: 1.3em;
                 font-weight: bold;
             }
             .analysis-content {
-                color: #f5f6fa;
+                line-height: 1.5;
             }
         </style>
         """
