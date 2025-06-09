@@ -16,6 +16,7 @@ from PIL import Image
 import atexit
 import shutil
 from llm_analyzer import analyze_screenshots
+import json
 
 # Define viewport sizes
 VIEWPORT_SIZES = {
@@ -200,7 +201,176 @@ def analyze_screenshots_handler(desktop_screenshots, mobile_screenshots):
     
     all_screenshots = [s[0] for s in desktop_screenshots + mobile_screenshots]
     analysis_results = analyze_screenshots(all_screenshots)
-    return analysis_results
+    
+    # Parse the analysis results into a structured format
+    try:
+        # Split the analysis into individual screenshot analyses and summary
+        parts = analysis_results.split("\n\nSUMMARY:\n")
+        individual_analyses = parts[0].strip().split("\n\n")
+        summary = parts[1] if len(parts) > 1 else ""
+        
+        # Create HTML for the analysis display
+        html_output = """
+        <div class="analysis-container">
+            <div class="summary-card">
+                <h3>📊 Overall Analysis</h3>
+                <div class="summary-content">
+        """
+        
+        # Add summary section
+        if summary:
+            try:
+                summary_data = json.loads(summary)
+                html_output += f"""
+                    <div class="summary-item">
+                        <h4>Summary</h4>
+                        <p>{summary_data.get('summary', 'No summary available')}</p>
+                    </div>
+                    <div class="summary-item">
+                        <h4>Common Issues</h4>
+                        <div class="issue-tags">
+                """
+                
+                for issue in summary_data.get('common_issues', []):
+                    html_output += f'<span class="issue-tag">{issue}</span>'
+                
+                html_output += """
+                        </div>
+                    </div>
+                    <div class="summary-item">
+                        <h4>Overall Assessment</h4>
+                        <p>{}</p>
+                    </div>
+                """.format(summary_data.get('overall_assessment', 'No assessment available'))
+            except json.JSONDecodeError:
+                html_output += "<p>Error parsing summary data</p>"
+        
+        html_output += """
+                </div>
+            </div>
+            
+            <div class="screenshot-analyses">
+                <h3>🔍 Detailed Analysis</h3>
+        """
+        
+        # Add individual screenshot analyses
+        for analysis in individual_analyses:
+            if "Screenshot" in analysis:
+                try:
+                    # Extract screenshot number and analysis data
+                    screenshot_num = analysis.split("Screenshot")[1].split("Analysis")[0].strip()
+                    analysis_data = json.loads(analysis.split("Analysis:\n")[1])
+                    
+                    # Determine status color
+                    status_color = "red" if analysis_data.get('issues_found', False) else "green"
+                    status_icon = "⚠️" if analysis_data.get('issues_found', False) else "✅"
+                    
+                    html_output += f"""
+                        <div class="analysis-card">
+                            <div class="analysis-header">
+                                <h4>Screenshot {screenshot_num}</h4>
+                                <span class="status-indicator" style="color: {status_color}">
+                                    {status_icon}
+                                </span>
+                            </div>
+                            <div class="analysis-content">
+                                <p>{analysis_data.get('details', 'No details available')}</p>
+                            </div>
+                        </div>
+                    """
+                except json.JSONDecodeError:
+                    html_output += f"""
+                        <div class="analysis-card">
+                            <div class="analysis-header">
+                                <h4>Screenshot {screenshot_num}</h4>
+                                <span class="status-indicator">❓</span>
+                            </div>
+                            <div class="analysis-content">
+                                <p>Error parsing analysis data</p>
+                            </div>
+                        </div>
+                    """
+        
+        html_output += """
+            </div>
+        </div>
+        
+        <style>
+            .analysis-container {
+                background: #181a20;
+                border-radius: 12px;
+                padding: 24px;
+                margin: 24px 0;
+                box-shadow: 0 2px 8px rgba(108, 99, 255, 0.10);
+            }
+            .summary-card {
+                background: #23272f;
+                border-radius: 10px;
+                padding: 20px;
+                margin-bottom: 24px;
+                box-shadow: 0 1px 4px rgba(108, 99, 255, 0.12);
+                border-left: 4px solid #6c63ff;
+            }
+            .summary-content {
+                display: grid;
+                gap: 20px;
+            }
+            .summary-item, .analysis-card {
+                background: #24262b;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 1px 3px rgba(108, 99, 255, 0.10);
+            }
+            .summary-item h4, .analysis-header h4 {
+                color: #a99cff;
+            }
+            .issue-tags {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .issue-tag {
+                background: #2d254d;
+                color: #a99cff;
+                border-radius: 16px;
+                padding: 4px 14px;
+                font-weight: 500;
+            }
+            .screenshot-analyses {
+                display: grid;
+                gap: 15px;
+            }
+            .analysis-card {
+                background: #24262b;
+                border-radius: 10px;
+                padding: 16px;
+                box-shadow: 0 1px 4px rgba(108, 99, 255, 0.08);
+                margin-bottom: 16px;
+                border-left: 4px solid #6c63ff;
+            }
+            .analysis-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+            .analysis-header h4 {
+                margin: 0;
+                color: #a99cff;
+            }
+            .status-indicator {
+                font-size: 1.3em;
+                font-weight: bold;
+            }
+            .analysis-content {
+                color: #f5f6fa;
+            }
+        </style>
+        """
+        
+        return html_output
+    except Exception as e:
+        return f"Error formatting analysis results: {str(e)}"
 
 # Create Gradio interface
 with gr.Blocks(title="Website Screenshot Tool", theme=gr.themes.Soft()) as demo:
@@ -270,7 +440,7 @@ with gr.Blocks(title="Website Screenshot Tool", theme=gr.themes.Soft()) as demo:
                     scale=1,
                     min_width=200
                 )
-                analysis_output = gr.Markdown(
+                analysis_output = gr.HTML(
                     label="Analysis Results",
                     show_label=True,
                     elem_classes=["analysis-results"],
