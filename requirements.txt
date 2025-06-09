@@ -6,3 +6,5 @@ requests
 python-dotenv
 openai
 pillow
+pydantic
+pydantic-ai-slim[openai]
